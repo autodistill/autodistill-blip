@@ -1,16 +1,15 @@
 import os
+import platform
 import subprocess
+import sys
 from dataclasses import dataclass
 
 import numpy as np
 import supervision as sv
 import torch
-from autodistill.detection import CaptionOntology, DetectionBaseModel
+from autodistill.classification import ClassificationBaseModel
+from autodistill.detection import CaptionOntology
 from PIL import Image
-
-from lavis.models import load_model_and_preprocess
-from lavis.processors.blip_processors import BlipCaptionProcessor
-import platform
 
 HOME = os.path.expanduser("~")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,26 +17,30 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # if device is not arm / Apple Silicon, install LAVIS from pip
 # else install from source
 
-if platform.processor() == "arm":
-    installation_instructions = ["pip install salesforce-lavis"]
-else:
-    installation_instructions = [
-        "cd ~/.cache/autodistill/ && git clone https://github.com/salesforce/LAVIS",
-        "cd ~/.cache/autodistill/LAVIS && pip install -r requirements.txt",
-        "cd ~/.cache/autodistill/LAVIS && python setup.py build develop --user",
-    ]
-
 
 @dataclass
-class Model(DetectionBaseModel):
+class BLIP(ClassificationBaseModel):
     ontology: CaptionOntology
 
     def __init__(self, ontology: CaptionOntology):
         self.ontology = ontology
 
-        if not os.path.exists(f"{HOME}/.cache/autodistill/LAVIS"):
+        if platform.processor() != "arm":
+            subprocess.run("pip install salesforce-lavis", shell=True)
+        elif not os.path.exists(f"{HOME}/.cache/autodistill/LAVIS"):
+            installation_instructions = [
+                "cd ~/.cache/autodistill/ && git clone https://github.com/salesforce/LAVIS",
+                "cd ~/.cache/autodistill/LAVIS && pip install -r requirements.txt",
+                "cd ~/.cache/autodistill/LAVIS && python setup.py build develop --user",
+            ]
             for command in installation_instructions:
                 subprocess.run(command, shell=True)
+
+        if platform.processor() == "arm":
+            sys.path.append(f"{HOME}/.cache/autodistill/LAVIS")
+
+        from lavis.models import load_model_and_preprocess
+        from lavis.processors.blip_processors import BlipCaptionProcessor
 
         model, vis_processors, _ = load_model_and_preprocess(
             "blip_feature_extractor", model_type="base", is_eval=True, device=DEVICE
@@ -45,8 +48,9 @@ class Model(DetectionBaseModel):
 
         self.model = model
         self.vis_processors = vis_processors
+        self.tokenizer = BlipCaptionProcessor
 
-    def predict(self, input: str) -> sv.Detections:
+    def predict(self, input: str) -> sv.Classifications:
         image = Image.open(input).convert("RGB")
 
         image = self.vis_processors["eval"](image).unsqueeze(0).to(DEVICE)
@@ -56,7 +60,7 @@ class Model(DetectionBaseModel):
         if len(classes) == 1:
             classes.append("something else")
 
-        text_processor = BlipCaptionProcessor(prompt="A picture of ")
+        text_processor = self.tokenizer(prompt="A picture of ")
 
         cls_prompt = [text_processor(cls_nm) for cls_nm in classes]
 
@@ -72,11 +76,9 @@ class Model(DetectionBaseModel):
         sims = (image_features @ text_features.t())[0] / self.model.temp
         probs = torch.nn.Softmax(dim=0)(sims).tolist()
 
-        top_k = 1
-
-        top_k_idx = torch.topk(sims, top_k).indices.tolist()
+        class_ids = np.arange(len(classes))
 
         return sv.Classifications(
-            class_id=np.array([top_k_idx[0]]),
-            confidence=np.array([probs[top_k_idx[0]]]),
+            class_id=np.array(class_ids),
+            confidence=np.array(probs),
         )

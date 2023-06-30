@@ -3,7 +3,7 @@
     <a align="center" href="" target="_blank">
       <img
         width="850"
-        src="https://media.roboflow.com/open-source/autodistill/autodistill-banner.png?3"
+        src="https://media.roboflow.com/open-source/autodistill/autodistill-banner.png?4"
       >
     </a>
   </p>
@@ -21,7 +21,7 @@ Read the [BLIP Autodistill documentation](https://autodistill.github.io/autodist
 
 ## Installation
 
-To use CLIP with autodistill, you need to install the following dependency:
+To use BLIP with autodistill, you need to install the following dependency:
 
 
 ```bash
@@ -38,7 +38,7 @@ from autodistill_blip import BLIP
 # where caption is the prompt sent to the base model, and class is the label that will
 # be saved for that caption in the generated annotations
 # then, load the model
-base_model = CLIP(
+base_model = BLIP(
     ontology=CaptionOntology(
         {
             "person": "person",
