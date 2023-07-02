@@ -57,9 +57,6 @@ class BLIP(ClassificationBaseModel):
 
         classes = self.ontology.classes()
 
-        if len(classes) == 1:
-            classes.append("something else")
-
         text_processor = self.tokenizer(prompt="A picture of ")
 
         cls_prompt = [text_processor(cls_nm) for cls_nm in classes]
