@@ -1,12 +1,13 @@
-import setuptools
-from setuptools import find_packages
 import re
 
-with open("./autodistill_blip/__init__.py", 'r') as f:
+import setuptools
+from setuptools import find_packages
+
+with open("./autodistill_blip/__init__.py", "r") as f:
     content = f.read()
     # from https://www.py4u.net/discuss/139845
     version = re.search(r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content).group(1)
-    
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -24,7 +25,7 @@ setuptools.setup(
         "torch",
         "numpy",
         "autodistill",
-        "supervision"
+        "supervision",
     ],
     packages=find_packages(exclude=("tests",)),
     extras_require={

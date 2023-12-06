@@ -3,13 +3,15 @@ import platform
 import subprocess
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import supervision as sv
 import torch
+
 from autodistill.classification import ClassificationBaseModel
 from autodistill.detection import CaptionOntology
-from PIL import Image
+from autodistill.helpers import load_image
 
 HOME = os.path.expanduser("~")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,8 +52,8 @@ class BLIP(ClassificationBaseModel):
         self.vis_processors = vis_processors
         self.tokenizer = BlipCaptionProcessor
 
-    def predict(self, input: str) -> sv.Classifications:
-        image = Image.open(input).convert("RGB")
+    def predict(self, input: Any) -> sv.Classifications:
+        image = load_image(input, return_format="PIL").convert("RGB")
 
         image = self.vis_processors["eval"](image).unsqueeze(0).to(DEVICE)
 
